@@ -2,9 +2,9 @@
 
 > **Single-file, zero-dependency operating system for autonomous, gated multi-agent software engineering — built to give developers their lives back.**
 
-`smort v5` · Repo template version `2026-11-24.v8` · **26 self-extracted artifacts** (10 templates, 13 verification/coordination scripts, 3 starter configs) · **0 third-party runtime dependencies** (Python 3 stdlib + POSIX Bash + `git`) · LLM-agnostic & IDE-agnostic
+`smort v5` · Repo template version `2026-11-24.v9` · **26 self-extracted artifacts** (10 templates, 13 verification/coordination scripts, 3 starter configs) · **0 third-party runtime dependencies** (Python 3 stdlib + POSIX Bash + `git`) · LLM-agnostic & IDE-agnostic
 
-Instead of babysitting coding agents all day typing *"Yes, continue development"*, you approve the product spec, architecture map, and autonomy boundaries once. From there, agents index the codebase, derive and delegate tasks, build red→green with negative-control proof, grade quality across 8 engineering domains, maintain bi-temporal self-healing work memory, and **continuously advance toward project completion** — surfacing only genuine judgment calls at your **scheduled daily approval timeslots**.
+Instead of babysitting coding agents all day typing *"Yes, continue development"*, agents auto-bootstrap with safe `ASSUMPTION:` defaults onto protected staging (`smort/dev`), index the codebase, derive and delegate tasks, build red→green with negative-control proof, grade quality across 8 engineering domains, maintain bi-temporal self-healing work memory, and **continuously advance toward project completion** — leaving `main` 100% untouched and surfacing only genuine judgment calls and `main` merges at your **scheduled daily approval timeslots**.
 
 ---
 
@@ -103,8 +103,8 @@ Modern AI coding agents can write thousands of lines of code per hour, yet devel
 | **Overview & Core Terms** | Autonomy model (`A0`/`A1`/`A2`), roles (Owner, Builder, Integration Lane, Verifier, Merger), trusted authors, epistemic vocabulary (`ASSUMPTION:`, `unknown`, `unverifiable`). |
 | **§1 START HERE: Resume Protocol** | State detection (install / upgrade / resume), tiered Hot Set vs. on-demand reads, Source-of-Truth Precedence, Anti-Circularity rule, atomic claim & continuous loop, crash-safe handoff. |
 | **§2 Core Invariants (Quick Map)** | Single-table index of all non-negotiable rules pointing to canonical clauses in `AGENTS.md`. |
-| **§3 Owner Settings & Thresholds** | One-shot install-time configuration table (timeslots, `A0_FLOW`, sensitive paths, maturity target, roster, caps) and configurable thresholds (`400` lines/PR, `800` lines/slot, `80%` coverage, `5%` perf budget). |
-| **§4 Install, Upgrade, and Spikes** | Self-extracting Python bootstrapper (§4.1), immediate `--self-test` verification, `v3–v7 → v8` upgrade guide (§4.2), Path A greenfield + non-mergeable `spike/<slug>` escape hatch (§4.3), non-destructive Path B existing-repo adoption (§4.4). |
+| **§3 Owner Settings & Thresholds** | Zero-question auto-detect configuration table (`ASSUMPTION:` defaults for timeslots, `stage-smort-dev`, sensitive paths, maturity target, roster, caps) and configurable thresholds (`400` lines/PR, `800` lines/slot, `80%` coverage, `5%` perf budget). |
+| **§4 Install, Upgrade, and Spikes** | Self-extracting Python bootstrapper (§4.1) + harness allowlist, immediate `--self-test` verification, `v3–v8 → v9` upgrade guide (§4.2), zero-wait Path A greenfield + non-mergeable `spike/<slug>` escape hatch (§4.3), non-destructive zero-wait Path B existing-repo adoption (§4.4). |
 | **§5 The Loop** | Role separation, continuous `A0`/`A1` promotion flow, Fast Gate (`≤ 15 min`) vs. Deep Gate (nightly/pre-release), cron/manual scheduling, usage/freeze/completion stop conditions. |
 | **§6 Multi-Dimensional, Multi-Domain Grading** | 3 Completion & Autonomy dimensions × 8 Engineering Quality domains graded by discrete Maturity Tier (`T0–T3`) + deterministic checklist ratio (`k/n`) with objective merge blocks. |
 | **§7 Repo Templates (`§7.1–§7.10`)** | All 10 ready-to-extract governance, architecture, task, audit, and handoff templates (fenced with `~~~~`). |
@@ -225,7 +225,7 @@ Every agent session — including immediately after context compaction or crash 
 
 | Tier | Loaded When | Files / Commands | Budget Guard |
 |---|---|---|---|
-| **Tier 1: Hot Set** | Every session start & post-compaction resume | `AGENTS.md` (§0/§1/§10), `PROGRAM.md` (§0), `HANDOFF.md` + `handoffs/<agent>.md`, `verify/LESSONS.md`, `AUDIT.md §1`, newest `AUDIT-LOG.md` entry, `tasks-index --live --next --compact` | `ratchet-check --budgets verify/budgets.json --check-hot-set` (`HANDOFF.md` ≤ 4 KB / 60 lines; `LESSONS.md` ≤ 8 KB; combined hot set ≤ 64 KB / 18,000 est tokens — measured Day-1 baseline: **55,957 B / 13,991 est tokens**) |
+| **Tier 1: Hot Set** | Every session start & post-compaction resume | `AGENTS.md` (§0/§1/§10), `PROGRAM.md` (§0), `HANDOFF.md` + `handoffs/<agent>.md`, `verify/LESSONS.md`, `AUDIT.md §1`, newest `AUDIT-LOG.md` entry, `tasks-index --live --next --compact` | `ratchet-check --budgets verify/budgets.json --check-hot-set` (`HANDOFF.md` ≤ 4 KB / 60 lines; `LESSONS.md` ≤ 8 KB; combined hot set ≤ 64 KB / 18,000 est tokens — measured Day-1 baseline: **57,858 B / 14,466 est tokens**) |
 | **Tier 2: Targeted Doc Sections** | Only for active or top candidate task | `project-map --section "<heading>" --file <doc>` (live disk read, secret-redacted, non-truncatable `not_shown` footer) and `project-map --impact <S*.C*> --compact` | Never loads full `ARCHITECTURE-TDD.md`, `PRD.md`, or `tasks/archive/` |
 | **Tier 3: Native Code Orientation** | Before broad grep or editing | `code-index query "<question>" --compact` and `code-index affected <file-or-symbol> --compact` | Exact `file:line` callers, inheritance, hubs, blast radius in milliseconds, with explicit `not_shown` counts outside `--budget` |
 
@@ -304,11 +304,11 @@ sequenceDiagram
     participant Verifier as Clean-Checkout Verifier
     participant Integ as Integration Lane
 
-    Note over Owner,Integ: Phase 1 — One-Time Install & Spec Slot
-    Builder->>Owner: Extract 26 files (§4.1), draft PRD/PROJECT-MAP/ARCHITECTURE-TDD/Tasks
-    Owner->>Integ: Approve Spec & A0_FLOW policy (D-001)
+    Note over Owner,Integ: Phase 1 — Zero-Question Install & Immediate smort/dev Staging
+    Builder->>Integ: Auto-detect defaults (§3), extract 26 files (§4.1), open smort/install + branch smort/dev
+    Integ-->>Owner: Queue async Spec Slot (D-001 & ASSUMPTION overrides) — zero wait!
 
-    Note over Builder,Integ: Phase 2 — Continuous Autonomous Execution (All Day)
+    Note over Builder,Integ: Phase 2 — Continuous Autonomous Execution (Starts Immediately on smort/dev)
     loop While ready tasks exist
         Builder->>Builder: tasks-index --live --next --compact -> atomic claim smort/T-nnn
         Builder->>Builder: Orient via code-index affected/query & project-map --section
@@ -319,9 +319,9 @@ sequenceDiagram
         Verifier->>Gate: Clean checkout + full read-coverage + negative-control check
         Verifier-->>Integ: Label PR verified
         alt Task is A0 (Autonomous)
-            Integ->>Integ: Rebase + fast gate + auto-merge to main (or smort/dev)
+            Integ->>Integ: Rebase + fast gate + integrate onto smort/dev Day 0 (or main per D-001)
         else Task is A1 (Sensitive / Judgment)
-            Integ->>Integ: Queue in awaiting-slot for next Owner Timeslot
+            Integ->>Integ: Pre-built & verified -> queue in awaiting-slot for next Owner Timeslot
         end
     end
 
@@ -329,13 +329,13 @@ sequenceDiagram
     Integ->>Integ: T-45 reconcile + conflict-matrix -> T-15 freeze -> T-10 gate-brief
     Integ->>Owner: Send 1-screen human-prose brief (M1..Mk, D1..Dn, Counted ROI)
     Owner->>Integ: Single batch reply ("approve M1 M2; hold M3; D1 A")
-    Integ->>Integ: Execute approved merges/ADRs & unfreeze
+    Integ->>Integ: Execute approved merges to main & ADRs, then unfreeze
 
     Note over Owner,Integ: Phase 4 — Bounded Nightly Pass (<= 45 min)
     Integ->>Integ: Deep gate + 8-domain AUDIT + lessons-reflect build -> smort/ops-audit PR
 ```
 
-1. **Install & Spec Slot (`smort/install`):** Extract the 26 artifacts, verify `--self-test` & hot-set budgets, draft or reverse-engineer `PRD.md`, `PROJECT-MAP.md`, and `ARCHITECTURE-TDD.md`, wire `scripts/verify/project-checks.sh`, and approve `D-001` once.
+1. **Zero-Question Install & Immediate Staging (`smort/install` → `smort/dev`):** Auto-detect settings (`ASSUMPTION:` defaults), extract all 26 artifacts, verify `--self-test` & hot-set budgets, draft or reverse-engineer `PRD.md`, `PROJECT-MAP.md`, and `ARCHITECTURE-TDD.md`, open `smort/install`, queue async `D-001` for the first slot, and **immediately branch `smort/dev`** (`main` stays 100% untouched) to start building without waiting in chat.
 2. **Orient & Claim:** Builders run `tasks-index --live --next --lane <lane> --compact`, claim the highest-priority unblocked task via canonical branch `smort/T-nnn`, and confirm no claim-race conflict via `--claim-check`.
 3. **Research & Build Red→Green:** Before implementing non-trivial code, builders orient with `code-index query`/`affected` and `project-map --section`, apply the **Reference-Coding & License Wall** protocol (`AGENTS.md §5.9`), commit failing tests first (`Red` SHA), implement strictly inside `touch_set`, prove negative control/mutation failure, and log non-obvious discoveries via `lessons-reflect log`.
 4. **Mechanical Gate + Independent Verification:** `scripts/verify/gate --fast --task T-nnn --red-sha <sha> --emit-pow` runs all mechanical checks and generates a 3-part Provenance Split proof-of-work block. A clean-checkout **Verifier** (different model preferred; fresh clean-context session explicitly labelled if single-model) verifies full read coverage and grants `verified`.
@@ -439,7 +439,7 @@ Copy [`smort.md`](./smort.md) into your repository root (or reference its path) 
 Follow smort.md for this repository.
 ```
 
-The agent starts at **`smort.md §1`**, detects whether the repository needs a fresh install, an upgrade, or a clean resume, asks you the one-shot owner settings questions (or applies labeled `ASSUMPTION:` defaults), extracts all 26 files via `§4.1`, and opens the `smort/install` PR for your one-time Spec Slot approval.
+The agent starts at **`smort.md §1`**, detects whether the repository needs a fresh install, an upgrade, or a clean resume, **auto-detects settings with labeled `ASSUMPTION:` defaults (zero Turn-1 questionnaire)**, extracts all 26 files via `§4.1`, opens `smort/install`, queues `D-001` asynchronously for your first slot, **immediately branches green-only `smort/dev`** (`main` stays 100% untouched), and starts executing ready tasks without asking in chat to continue.
 
 ### Quickstart: Self-Extract Locally (< 0.2 s)
 
@@ -489,36 +489,43 @@ verify/code-index*.json
 
 ### Install Paths (New Repo, Spike Branch, Existing Repo, Upgrade)
 
-- **Path A — New Project (`smort.md §4.3`):** Extract onto branch `smort/install`, fill `PRD.md`, `PROJECT-MAP.md`, and `ARCHITECTURE-TDD.md`, derive initial tasks in topological order (Task 1 wires `scripts/verify/project-checks.sh` + CI; Task 2 builds lowest-layer contracts), run `project-map` and `tasks-index`, and approve `D-001` at the Spec Slot.
+- **Path A — New Project (`smort.md §4.3`, zero-wait):** Auto-detect §3 settings (`ASSUMPTION:` defaults), extract onto `smort/install`, fill `PRD.md`, `PROJECT-MAP.md`, and `ARCHITECTURE-TDD.md`, derive initial tasks (`scripts/verify/project-checks.sh` + `smoke.sh` + contracts as `A0`; `.github/workflows/` CI pre-built as `A1` into `awaiting-slot`), open `smort/install` + queue async `D-001` for the first slot, and **immediately branch `smort/dev`** to start executing (`main` stays 100% untouched).
 - **Spike Escape Hatch (`spike/<slug>`):** When product feel or technical feasibility is uncertain, open a timeboxed, **strictly non-mergeable** `spike/<slug>` branch exempt from `PROJECT-MAP.md` and ratchets. Prove or falsify the assumption, record lessons via `lessons-reflect log`, delete the spike branch, and start Path A cleanly.
-- **Path B — Existing Codebase (`smort.md §4.4`):** Extract onto `smort/install` (existing files are preserved verbatim and collisions write to `*.smort-new` for careful merging). Run `scripts/verify/code-index build && scripts/verify/code-index hubs --cycles` immediately to map real imports, god-node hubs, manifests, and pre-existing cycles in seconds with zero LLM tokens. Reverse-engineer `PROJECT-MAP.md` and `ARCHITECTURE-TDD.md` read-only, wire `scripts/verify/project-checks.sh` to existing repo commands, and log a Day-0 `AUDIT-LOG.md` baseline.
-- **Upgrade (`v3–v7 → v8`, `smort.md §4.2`):** Re-run the §4.1 extractor, merge `*.smort-new` updates while keeping all historical `AUDIT-LOG.md`, `tasks/`, `verify/lessons/*.jsonl`, and ADRs intact, verify `--self-test` + `--check-hot-set`, bump `Template version: 2026-11-24.v8`, and remove `*.smort-new` files.
+- **Path B — Existing Codebase (`smort.md §4.4`, zero-wait, non-destructive):** Auto-detect §3 settings, extract onto `smort/install` (existing files are preserved verbatim and collisions write to `*.smort-new` for careful merging), run `code-index build && code-index hubs --cycles` immediately to map real imports/hubs/cycles with zero LLM tokens, reverse-engineer `PROJECT-MAP.md` and `ARCHITECTURE-TDD.md` read-only, open `smort/install`, queue async `D-001`, and **immediately branch `smort/dev`** to execute initial ready tasks.
+- **Upgrade (`v3–v8 → v9`, `smort.md §4.2`):** Re-run the §4.1 extractor, merge `*.smort-new` updates while keeping all historical `AUDIT-LOG.md`, `tasks/`, `verify/lessons/*.jsonl`, and ADRs intact, verify `--self-test` + `--check-hot-set`, bump `Template version: 2026-11-24.v9`, remove `*.smort-new` files, and resume immediately without waiting for chat approval.
 
 ### Owner Settings & Thresholds
 
-Configured once at install in `AGENTS.md §0` and `PROGRAM.md §0`:
+Auto-detected at install into `AGENTS.md §0` and `PROGRAM.md §0` (inferred values tagged `ASSUMPTION:` and ratifiable/overridable at your first slot):
 
 | Setting | Default | Purpose |
 |---|---|---|
 | `{{AVAILABILITY_SLOTS}}` | `Morning 08:30–08:45`, `Evening 18:30–18:45` (weekends async-only) | Your scheduled review windows; zero non-`A2` pings outside these slots |
-| `{{A0_FLOW}}` | `stage-smort-dev` (`auto-merge-main` recommended once `T2` trust earned) | Whether verified `A0` PRs auto-merge to `main` or integrate onto green-only `smort/dev` |
-| `{{A1_SENSITIVE_PATHS}}` | `auth,billing,payment,migration,schema,infra,terraform,.github,security` | Path patterns mechanically forced to `A1` by `touch-set-check` |
+| `{{A0_FLOW}}` | `stage-smort-dev` (active Day 0; `auto-merge-main` optional once `T2` trust earned) | Stages verified `A0` PRs onto green-only `smort/dev` from Day 0 while keeping `main` untouched until slots |
+| `{{A1_SENSITIVE_PATHS}}` | `auth,billing,payment,migration,schema,infra,terraform,.github,security` | Path patterns mechanically forced to `A1` by `touch-set-check` (pre-built into `awaiting-slot`; never auto-merged to `main`) |
 | `{{MATURITY_TARGET}}` | `production` (`mvp` / `production` / `hardened`) | Target tier (`T1` / `T2` / `T3`) across all 8 domains in `AUDIT.md` |
-| `{{TRUSTED_AUTHORS}}` | Owner handle + configured agent handles | Allowlist for trusted PR comments; all other external text is `<untrusted_source>` |
+| `{{TRUSTED_AUTHORS}}` | Auto-detected owner handle + configured agent handles | Allowlist for trusted PR comments; all other external text is `<untrusted_source>` |
 | `{{400}}` / `{{800}}` | 400 code lines per PR / 800 combined `A1` lines per slot | Hard PR size cap & anti-rubber-stamp slot cap |
 | `{{USAGE_CAP}}` | `70%` | Automatically scales back to morning slot only and pauses nightly audit near plan limits |
 
 ### Always-On Assistant Rules Snippet
 
-Paste into `CLAUDE.md`, `.cursor/rules`, `.gemini/GEMINI.md`, or your agent's session-start hook so agents stay oriented even after context compaction:
+Paste into `CLAUDE.md`, `.cursor/rules`, `.gemini/GEMINI.md`, or your agent's session-start hook so agents never relapse into chat-confirmation loops and stay oriented after context compaction:
 
 ```markdown
-## smort orientation (always-on)
+## smort orientation & autonomous-first law (always-on)
 - Start every session AND post-compaction resume with the Hot Set (`AGENTS.md §0/§1/§10`, `verify/LESSONS.md`, `HANDOFF.md`, `scripts/verify/tasks-index --live --next --compact`).
+- Autonomous-first: NEVER stop in chat to ask settings questions, *"Should I proceed?"*, or *"Approve to continue?"*. Auto-detect defaults (`ASSUMPTION:`), stage verified work on `smort/dev` (keeping `main` untouched), pre-build & verify `A1` PRs into `awaiting-slot`, and queue `D-001`/`A1` merges asynchronously for scheduled timeslots. Interrupt only for `A2` incidents.
 - Before raw grepping docs or code, run `scripts/verify/project-map --section "<heading>"`, `scripts/verify/code-index query "<question>" --compact`, or `scripts/verify/code-index affected <file-or-symbol> --compact`.
 - Anti-circularity: never cite an index, map, lessons summary, or code graph as verification proof for the code or gate you just changed—inspect live files and run `scripts/verify/gate`.
 - Precedence on conflict: live code & tests > `PROJECT-MAP.md` > `ARCHITECTURE-TDD.md` > `PRD.md` > `HANDOFF.md` > `verify/LESSONS.md`.
 ```
+
+**Optional agent-harness tool allowlist (stop IDE/CLI shell popups without weakening `main` protection):**
+If your host harness (Claude Code, Cursor, Codex, Antigravity, etc.) prompts to approve every shell command, allowlist these safe non-destructive, branch-scoped commands while keeping `git push origin main`, `--force`, `gh pr merge`, and deploys gated:
+- `scripts/verify/*`, `python3 scripts/verify/*`
+- `git status*`, `git diff*`, `git log*`, `git fetch*`, `git branch*`, `git rev-parse*`, `git cat-file*`, `git merge-tree*`, `gh pr list*`, `gh pr view*`, `gh pr checks*`
+- `git checkout -b smort/*`, `git switch -c smort/*`, `git add*`, `git commit*`, `git push -u origin smort/*`, `git push origin smort/*`, `gh pr create*`
 
 ### Day-to-Day CLI Cheat Sheet
 
@@ -574,7 +581,7 @@ The Integration Lane executes every approved merge and ADR, records holds/deferr
 
 ### Repository Contents
 
-- [`smort.md`](./smort.md) — The complete self-extracting `smort v5` (`2026-11-24.v8`) specification, 10 repo templates, 13 zero-dependency verification/coordination scripts, and 3 starter configs.
+- [`smort.md`](./smort.md) — The complete self-extracting `smort v5` (`2026-11-24.v9`) specification, 10 repo templates, 13 zero-dependency verification/coordination scripts, and 3 starter configs.
 - [`README.md`](./README.md) — This architectural, capability, and usage guide.
 - [`assets/smort_explainer.mp4`](./assets/smort_explainer.mp4) — 1080p Full HD (`04:31`, `17.67 MiB`) narrated motion-graphics explainer video covering `smort.md` / `README.md`.
 - [`assets/smort_explainer.srt`](./assets/smort_explainer.srt) — Standalone English subtitle track for the explainer video.
