@@ -1,0 +1,287 @@
+1
+00:00:00,600 --> 00:00:03,562
+Coding agents can write thousands of lines an hour —
+
+2
+00:00:03,562 --> 00:00:06,948
+yet developers still spend all day babysitting them, typing:
+
+3
+00:00:06,948 --> 00:00:08,217
+yes, continue.
+
+4
+00:00:08,217 --> 00:00:09,011
+Meet smort:
+
+5
+00:00:09,011 --> 00:00:13,665
+a single-file, zero-dependency operating system for autonomous software engineering,
+
+6
+00:00:13,665 --> 00:00:16,416
+built to give developers their lives back.
+
+7
+00:00:17,766 --> 00:00:21,677
+Without structure, AI coding collapses into two failure modes.
+
+8
+00:00:21,677 --> 00:00:24,936
+Babysit every turn, and you become a human click-bot trapped
+
+9
+00:00:24,936 --> 00:00:27,598
+in merge conflicts and context amnesia.
+
+10
+00:00:27,598 --> 00:00:30,748
+Turn off guardrails, and agents ship fake green tests,
+
+11
+00:00:30,748 --> 00:00:35,039
+silent no-op stubs, circular imports, secret leaks, and hung CI jobs.
+
+12
+00:00:35,039 --> 00:00:40,254
+smort eliminates both extremes with a Git-native, mechanically verified control plane.
+
+13
+00:00:41,454 --> 00:00:44,022
+Everything lives inside one portable file:
+
+14
+00:00:44,022 --> 00:00:45,362
+smort.md.
+
+15
+00:00:45,362 --> 00:00:48,656
+Run its built-in Python extractor, and in under two hundred
+
+16
+00:00:48,656 --> 00:00:52,508
+milliseconds it unpacks twenty-six files directly into your repo:
+
+17
+00:00:52,508 --> 00:00:57,923
+ten governance and spec templates, thirteen executable verification and coordination scripts,
+
+18
+00:00:57,923 --> 00:00:59,933
+and three starter configs.
+
+19
+00:00:59,933 --> 00:01:04,734
+Zero third-party packages, zero daemons, zero databases, and zero telemetry.
+
+20
+00:01:05,934 --> 00:01:09,765
+smort is architected as a four-layer Git-native control plane.
+
+21
+00:01:09,765 --> 00:01:12,373
+Parallel builders never fight over hot files:
+
+22
+00:01:12,373 --> 00:01:16,098
+they write to sharded per-task folders, claim branches atomically with
+
+23
+00:01:16,098 --> 00:01:21,525
+Git compare-and-swap on smort/T-nnn, and feed a single serialized integration lane.
+
+24
+00:01:21,525 --> 00:01:24,612
+Whenever files disagree, strict fact precedence rules:
+
+25
+00:01:24,612 --> 00:01:28,550
+live code and observed tests always outrank maps, docs, and handoffs —
+
+26
+00:01:28,550 --> 00:01:33,126
+and an anti-circularity rule forbids citing any index as verification proof.
+
+27
+00:01:34,326 --> 00:01:38,551
+The secret to reclaiming your focus is three-tier approval routing.
+
+28
+00:01:38,551 --> 00:01:42,557
+Low-risk A0 tasks stay inside approved specs and non-sensitive paths,
+
+29
+00:01:42,557 --> 00:01:47,606
+integrating continuously to main or green-only smort/dev without ever pinging you.
+
+30
+00:01:47,606 --> 00:01:48,868
+Sensitive A1 work —
+
+31
+00:01:48,868 --> 00:01:52,599
+auth, billing, migrations, infrastructure, or public contracts —
+
+32
+00:01:52,599 --> 00:01:55,947
+is enforced mechanically by touch-set-check, built early,
+
+33
+00:01:55,947 --> 00:02:00,831
+and bundled into a one-screen brief for your scheduled morning or evening slot.
+
+34
+00:02:00,831 --> 00:02:05,934
+You answer with one batch line, while only true A2 incidents interrupt immediately.
+
+35
+00:02:07,184 --> 00:02:11,780
+Instead of burning tokens grepping blindly, agents orient through PROJECT-MAP
+
+36
+00:02:11,780 --> 00:02:15,182
+and smort's native, zero-dependency code-index.
+
+37
+00:02:15,182 --> 00:02:18,883
+Parsing Python AST alongside TypeScript, JavaScript, Rust,
+
+38
+00:02:18,883 --> 00:02:22,703
+Go, and package manifests, it computes reverse blast radius,
+
+39
+00:02:22,703 --> 00:02:26,463
+god-node hubs, runtime import cycles, undeclared map drift,
+
+40
+00:02:26,463 --> 00:02:30,522
+doc-symbol sync, and security hub bypass scans in milliseconds —
+
+41
+00:02:30,522 --> 00:02:34,880
+emitting compact agent output with explicit not-shown counters so clipped
+
+42
+00:02:34,880 --> 00:02:37,088
+results never hide reality.
+
+43
+00:02:38,288 --> 00:02:41,296
+Every change must prove itself mechanically.
+
+44
+00:02:41,296 --> 00:02:46,868
+Builders commit failing tests first, prove negative controls, and run scripts/verify/gate.
+
+45
+00:02:46,868 --> 00:02:50,600
+It checks diff size, red-commit ancestry, touch-set boundaries,
+
+46
+00:02:50,600 --> 00:02:54,333
+secret and slop literals, executable doc claims in claims.json,
+
+47
+00:02:54,333 --> 00:02:57,731
+GitHub Actions timeout guards, and hot-set budgets.
+
+48
+00:02:57,731 --> 00:03:01,575
+Every PR emits a three-part provenance split separating verified runs
+
+49
+00:03:01,575 --> 00:03:03,302
+from untested assumptions —
+
+50
+00:03:03,302 --> 00:03:09,152
+and an independent clean-checkout verifier inspects full files before granting verified status.
+
+51
+00:03:10,402 --> 00:03:13,601
+Each night, a bounded audit grades the repo across eight
+
+52
+00:03:13,601 --> 00:03:17,427
+engineering domains using discrete maturity tiers T0 through T3 and
+
+53
+00:03:17,427 --> 00:03:19,483
+deterministic checklist ratios —
+
+54
+00:03:19,483 --> 00:03:22,054
+eliminating noisy LLM score jitter.
+
+55
+00:03:22,054 --> 00:03:26,109
+Meanwhile, lessons-reflect builds bi-temporal, self-healing memory:
+
+56
+00:03:26,109 --> 00:03:30,450
+deduplicating logs by SHA-256, decaying stale patterns over thirty days,
+
+57
+00:03:30,450 --> 00:03:35,190
+auto-retiring entries when referenced files change, honoring human corrections with
+
+58
+00:03:35,190 --> 00:03:39,874
+three-times overriding authority, and supporting full --as-of time travel.
+
+59
+00:03:41,074 --> 00:03:43,631
+smort even polices its own context tax.
+
+60
+00:03:43,631 --> 00:03:47,181
+Hot-set budgets keep startup files tight after every compaction,
+
+61
+00:03:47,181 --> 00:03:50,573
+paired sanity floors block fast-but-wrong performance cheats,
+
+62
+00:03:50,573 --> 00:03:55,636
+and conflict-matrix predicts both textual merges and semantic risks across shared hubs.
+
+63
+00:03:55,636 --> 00:04:00,073
+Linked Git worktrees and committer identity guards keep parallel fleets isolated,
+
+64
+00:04:00,073 --> 00:04:05,866
+while three-outcome triage blocks speculative busywork and gate-brief reports counted autonomous ROI.
+
+65
+00:04:07,066 --> 00:04:09,275
+Getting started takes seconds.
+
+66
+00:04:09,275 --> 00:04:11,649
+Drop smort.md into any new or existing
+
+67
+00:04:11,649 --> 00:04:13,969
+repository and tell your coding agent:
+
+68
+00:04:13,969 --> 00:04:16,509
+Follow smort.md for this repository —
+
+69
+00:04:16,509 --> 00:04:21,645
+or run the zero-dependency extractor locally and verify all self-tests immediately.
+
+70
+00:04:21,645 --> 00:04:24,185
+Approve the spec once, reclaim your focus,
+
+71
+00:04:24,185 --> 00:04:26,946
+and let verified autonomy ship the work.
+
+72
+00:04:26,946 --> 00:04:31,474
+Explore the full specification at github.com/smolboon/smort.

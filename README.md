@@ -8,8 +8,35 @@ Instead of babysitting coding agents all day typing *"Yes, continue development"
 
 ---
 
+## Explainer Video (`04:31` · 1080p Narrated Walkthrough)
+
+[![Watch the smort v5 Narrated Explainer Video](./assets/smort_explainer_poster.jpg)](https://github.com/smolboon/smort/blob/main/assets/smort_explainer.mp4)
+
+**[Watch / Open `assets/smort_explainer.mp4`](./assets/smort_explainer.mp4)** · **[Direct Download (`17.67 MiB`, 1080p H.264 + AAC)](https://github.com/smolboon/smort/raw/main/assets/smort_explainer.mp4)** · **[Subtitles (`SRT`)](./assets/smort_explainer.srt)**
+
+<details>
+<summary><strong>Chapter Index (10 Chapters)</strong></summary>
+
+| Timestamp | Chapter | Topic |
+|---|---|---|
+| `00:00` | **01 · Overview** | Stop Babysitting Your Coding Agents |
+| `00:17` | **02 · The Problem** | Babysitting Trap vs. Unchecked Autonomy Collapse |
+| `00:41` | **03 · What It Offers** | One Portable File → 26 Zero-Dependency Artifacts (`10` templates, `13` scripts, `3` configs) |
+| `01:05` | **04 · Architecture** | 4-Layer Git-Native Control Plane, Source-of-Truth Precedence & Anti-Circularity |
+| `01:34` | **05 · Autonomy & Slots** | `A0` / `A1` / `A2` Routing, Scheduled Owner Slots & 1-Line Batch Replies |
+| `02:07` | **06 · Code & Map Index** | Unified `PROJECT-MAP` + Native Zero-Dep `code-index`, Hub Bypass & `not_shown` |
+| `02:38` | **07 · Verification Gates** | Red→Green, 5 Mechanical Shields, 3-Part Provenance Split & Clean-Checkout Verifier |
+| `03:10` | **08 · Grading & Memory** | 8-Domain `T0–T3` + `k/n` Grading & Bi-Temporal Self-Healing `lessons-reflect` |
+| `03:41` | **09 · Scale & Sanity** | Hot-Set & Perf Sanity Budgets, Linked Git Worktrees, `conflict-matrix` & Counted ROI |
+| `04:07` | **10 · Get Started** | One-Prompt Agent Setup, `< 0.2 s` Local Self-Extractor & `github.com/smolboon/smort` |
+
+</details>
+
+---
+
 ## Table of Contents
 
+- [Explainer Video (`04:31` · 1080p Narrated Walkthrough)](#explainer-video-0431--1080p-narrated-walkthrough)
 1. [What Problem `smort` Solves](#1-what-problem-smort-solves)
 2. [What `smort` Offers](#2-what-smort-offers)
    - [Inside `smort.md`: Complete File Map](#inside-smortmd-complete-file-map)
@@ -549,3 +576,6 @@ The Integration Lane executes every approved merge and ADR, records holds/deferr
 
 - [`smort.md`](./smort.md) — The complete self-extracting `smort v5` (`2026-11-24.v8`) specification, 10 repo templates, 13 zero-dependency verification/coordination scripts, and 3 starter configs.
 - [`README.md`](./README.md) — This architectural, capability, and usage guide.
+- [`assets/smort_explainer.mp4`](./assets/smort_explainer.mp4) — 1080p Full HD (`04:31`, `17.67 MiB`) narrated motion-graphics explainer video covering `smort.md` / `README.md`.
+- [`assets/smort_explainer.srt`](./assets/smort_explainer.srt) — Standalone English subtitle track for the explainer video.
+- [`assets/smort_explainer_poster.jpg`](./assets/smort_explainer_poster.jpg) — Video preview poster rendered in this README.
