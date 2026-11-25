@@ -1,0 +1,53 @@
+name: smort CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run 12-suite smort verification harness
+        run: python3 tests/verify_smort.py
+      - name: Dogfood extracted ci-guard and claim-check against this repo
+        run: |
+          python3 - <<'PY'
+          import re, stat, subprocess, sys, tempfile
+          from pathlib import Path
+
+          repo = Path.cwd()
+          src = (repo / "smort.md").read_text(encoding="utf-8")
+          fence = "~" * 4
+          pat = re.compile(rf"^### [78]\.\d+ `([^`]+)`[^\n]*\n\n{fence}[a-z]*\n(.*?)\n{fence}", re.M | re.S)
+          with tempfile.TemporaryDirectory() as td:
+              tdp = Path(td)
+              for m in pat.finditer(src):
+                  out = tdp / m.group(1)
+                  out.parent.mkdir(parents=True, exist_ok=True)
+                  out.write_text(m.group(2) + "\n", encoding="utf-8")
+                  if m.group(1).startswith("scripts/verify/"):
+                      out.chmod(out.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+              subprocess.run(
+                  [sys.executable, str(tdp / "scripts/verify/ci-guard"), "--dir", ".github/workflows", "--require-workflows"],
+                  check=True,
+              )
+              subprocess.run(
+                  [sys.executable, str(tdp / "scripts/verify/claim-check"), "--rules", str(tdp / "verify/claims.json"), "README.md"],
+                  check=True,
+              )
+          PY
