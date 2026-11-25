@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run 12-suite smort verification harness
+      - name: Run 16-suite smort v7 verification harness
         run: python3 tests/verify_smort.py
       - name: Dogfood extracted ci-guard and claim-check against this repo
         run: |
@@ -36,12 +36,15 @@ jobs:
           pat = re.compile(rf"^### [78]\.\d+ `([^`]+)`[^\n]*\n\n{fence}[a-z]*\n(.*?)\n{fence}", re.M | re.S)
           with tempfile.TemporaryDirectory() as td:
               tdp = Path(td)
+              cnt = 0
               for m in pat.finditer(src):
                   out = tdp / m.group(1)
                   out.parent.mkdir(parents=True, exist_ok=True)
                   out.write_text(m.group(2) + "\n", encoding="utf-8")
                   if m.group(1).startswith("scripts/verify/"):
                       out.chmod(out.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+                  cnt += 1
+              assert cnt == 32, f"Expected 32 blocks, got {cnt}"
               subprocess.run(
                   [sys.executable, str(tdp / "scripts/verify/ci-guard"), "--dir", ".github/workflows", "--require-workflows"],
                   check=True,
