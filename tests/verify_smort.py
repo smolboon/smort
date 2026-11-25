@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
-"""Comprehensive 16-suite zero-dependency verification harness for smort.md (v7 · 2026-11-25.v11).
+"""Comprehensive 18-suite zero-dependency verification harness for smort.md (v8 · 2026-11-25.v12).
 Tests:
-  1. Extraction (32 blocks), syntax, stdlib-only compliance, STOP-READING guard, cross-refs, placeholders, collision safety
+  1. Extraction (34 blocks), syntax, stdlib-only compliance, STOP-READING Turn-1 budget, cross-refs, collision safety
   2. Hot/Cold context budgets (PROGRAM.md <= 5 KB, sharded handoffs/*.md, Week-2 headroom) & ratchets
   3. Base-ref auto-resolution across Git topologies (_smort_lib.py)
-  4. Unbounded cohesive tickets & parallel hardened gate (--fail-fast, --sequential, smart gitleaks, --verify-red-cmd)
-  5. touch-set-check & hardened fake-work-scan (BASE..HEAD intermediate-commit history & Shannon-entropy secrets)
+  4. Unbounded cohesive tickets, parallel gate, canonical smort/T-nnn auto-task inference, smart gitleaks & --verify-red-cmd
+  5. touch-set-check (auto-loaded DO_NOT_TOUCH & A1_SENSITIVE_PATHS) & fake-work-scan (history, entropy, vendor secrets, .githooks, monorepo configs)
   6. tasks-index full §5 delegation & batched git cat-file --batch live overlay
   7. project-map & live --section reading docs/PLAYBOOK.md & docs/OPERATIONS.md
-  8. code-index polyglot/monorepo, (mtime_ns,size) no-op cache, compact JSON, tsconfig paths/barrels, scoped affected, comment-safe bypass
+  8. code-index schema v4: multiline TS imports/exports, arrow symbols, Rust grouped use, comment stripping, stat cache & scoped affected
   9. ci-guard 2/4-space YAML, block scalars & expression timeouts
  10. claim-check & starter verify/claims.json
  11. conflict-matrix parallel merge-tree, sound disjoint-path pre-filter, spaces, worktree cache & timestamps
- 12. gate-brief (M0, --max-prs 5, Risk-Sliced A1 Review Maps, JSON manifest) & lessons-reflect (O(log K) compact + Git --as-of)
- 13. smort-resume 1-call role-tailored startup packet, topic filter, redaction & not_shown
- 14. slot-apply deterministic reply parsing, unverified guard, --dry-run & --execute (merges, ADRs, toggles, receipt)
+ 12. gate-brief (M0, --max-prs 5, Risk-Sliced A1 Review Maps, JSON manifest) & lessons-reflect (O(log K) compact + batched Git --as-of)
+ 13. smort-resume 1-call role startup packet, ROLE_LANES integration fix, live health/progress, topic filter & redaction
+ 14. slot-apply deterministic reply parsing, unverified guard, --dry-run, --execute --push (with .githooks) & idempotent re-run
  15. install-hooks mechanical .githooks pre-commit secret block & pre-push main protection
- 16. End-to-end smort v7 lifecycle smoke (extract -> hooks -> resume -> red/green gate -> brief -> slot-apply)"""
+ 16. End-to-end smort v8 lifecycle smoke (extract -> doctor -> hooks -> resume -> smort-claim -> auto-task gate -> brief -> slot-apply --push)
+ 17. smort-claim 1-command atomic task claimer (dry-run, dirty guard, CAS push race auto-rollback + retry, offline, empty queue)
+ 18. smort-doctor 1-command health & env diagnostic (strict warnings, leftover *.smort-new error, template version mismatch, compact/json)"""
 import ast
 import json
 import os
@@ -144,16 +146,19 @@ Test task {tid}.
 
 
 # ---------------------------------------------------------------------------
-# Suite 1: Extraction (32 blocks), Syntax, Zero-Dep, STOP-READING, Cross-Refs
+# Suite 1: Extraction (34 blocks), Syntax, Zero-Dep, STOP-READING, Cross-Refs
 # ---------------------------------------------------------------------------
 def suite_1_extraction_and_static_checks():
     src = SMORT_MD.read_text(encoding="utf-8")
-    assert "Template version: 2026-11-25.v11" in src
+    assert "Template version: 2026-11-25.v12" in src
     assert "TOKEN-BUDGET DIRECTIVE — STOP READING AT" in src[:1500]
-    assert "<!-- SMORT-STOP-READING-HERE -->" in src
-    assert len(re.findall(r"^~~~~", src, re.M)) == 64, "Expected 64 ~~~~ fence markers"
+    stop_marker = "\n<!-- SMORT-STOP-READING-HERE -->\n"
+    assert stop_marker in src
+    head_bytes = len(src[: src.index(stop_marker)].encode("utf-8"))
+    assert head_bytes < 40000, f"Turn-1 §0-§6 manual bloated to {head_bytes} B (>= 40 KB)"
+    assert len(re.findall(r"^~~~~", src, re.M)) == 68, "Expected 68 ~~~~ fence markers (34 blocks)"
 
-    for bad in ("{{400}}", "{{800}}", "{{MAX_GATE_LINES}}", "{{5}}", "{{45}}", "{{T2}}", "2026-11-25.v10", "smort v6"):
+    for bad in ("{{400}}", "{{800}}", "{{MAX_GATE_LINES}}", "{{5}}", "{{45}}", "{{T2}}", "2026-11-25.v10", "2026-11-25.v11", "smort v6", "smort v7"):
         assert bad not in src, f"Stale placeholder/version {bad} still present in smort.md"
     assert not re.search(r"PROGRAM\.md\s*§[2-8]", src), "Stale PROGRAM.md §2-§8 ref still present in smort.md"
 
@@ -163,7 +168,7 @@ def suite_1_extraction_and_static_checks():
         assert ext_match, "Missing §4.1 extractor block"
         r = run(["bash", "-c", ext_match.group(1)], work, env={"SMORT_FILE": str(SMORT_MD)})
         assert r.returncode == 0, f"§4.1 extractor failed:\n{r.stdout}\n{r.stderr}"
-        assert "extracted 32 smort v7 files" in r.stdout
+        assert "extracted 34 smort v8 files" in r.stdout
 
         expected_files = [
             "AGENTS.md", "PROGRAM.md", "PROJECT-MAP.md", "TASKS.md", "PRD.md",
@@ -177,10 +182,11 @@ def suite_1_extraction_and_static_checks():
             "scripts/verify/lessons-reflect", "scripts/verify/project-checks.sh",
             "scripts/verify/ci-guard", "scripts/verify/claim-check",
             "scripts/verify/smort-resume", "scripts/verify/slot-apply",
-            "scripts/verify/install-hooks",
+            "scripts/verify/install-hooks", "scripts/verify/smort-claim",
+            "scripts/verify/smort-doctor",
             "verify/ratchet.json", "verify/claims.json", "verify/budgets.json",
         ]
-        assert len(expected_files) == 32
+        assert len(expected_files) == 34
         for rel in expected_files:
             p = work / rel
             assert p.is_file(), f"Missing extracted file: {rel}"
@@ -225,13 +231,13 @@ def suite_1_extraction_and_static_checks():
 def suite_2_hot_set_and_ratchets():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
 
         # Day-1 hot set passes and is dramatically slimmed (< 28 KB; PROGRAM.md <= 5 KB)
         r = run(["scripts/verify/ratchet-check", "--verify-config", "--budgets", "verify/budgets.json", "--check-hot-set", "--json"], work)
         assert r.returncode == 0, f"Day-1 hot set failed:\n{r.stdout}\n{r.stderr}"
         rep_d1 = json.loads(r.stdout)
-        assert rep_d1["files"]["AGENTS.md"]["bytes"] <= 20480
+        assert rep_d1["files"]["AGENTS.md"]["bytes"] <= 20000
         assert rep_d1["files"]["PROGRAM.md"]["bytes"] <= 5120, f"PROGRAM.md too large: {rep_d1['files']['PROGRAM.md']['bytes']}"
         assert rep_d1["total_bytes"] < 28000, f"Day-1 Hot Set expected < 28 KB, got {rep_d1['total_bytes']}"
 
@@ -292,7 +298,7 @@ def suite_3_base_ref_resolution():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare, default_branch="main")
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         commit_all(work, "chore: init")
         run(["git", "push", "-u", "origin", "main"], work, check=True)
         run(["git", "checkout", "-b", "smort/dev"], work, check=True)
@@ -319,7 +325,7 @@ def suite_3_base_ref_resolution():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         init_git_repo(work, bare=None, default_branch="master")
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         commit_all(work, "chore: init master")
         run(["git", "checkout", "-b", "smort/T-001"], work, check=True)
         r_m = run(["python3", "scripts/verify/_smort_lib.py", "--resolve-base"], work)
@@ -327,7 +333,7 @@ def suite_3_base_ref_resolution():
 
 
 # ---------------------------------------------------------------------------
-# Suite 4: Unbounded Cohesive Tickets, Parallel Gate, Smart gitleaks & --verify-red-cmd
+# Suite 4: Unbounded Cohesive Tickets, Parallel Gate, Auto-Task Inference, Smart gitleaks & --verify-red-cmd
 # ---------------------------------------------------------------------------
 def suite_4_unbounded_ticket_and_gate():
     with tempfile.TemporaryDirectory() as td:
@@ -335,7 +341,7 @@ def suite_4_unbounded_ticket_and_gate():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         (work / "scripts/verify/project-checks.sh").write_text("#!/usr/bin/env bash\nPYTHONPATH=. python3 tests/test_engine.py\n", encoding="utf-8")
         (work / "scripts/verify/project-checks.sh").chmod(0o755)
         (work / "src/core/domain").mkdir(parents=True)
@@ -347,7 +353,7 @@ def suite_4_unbounded_ticket_and_gate():
         (work / "PROJECT-MAP.md").write_text(pm, encoding="utf-8")
         run(["scripts/verify/project-map"], work, check=True)
         (work / "tasks/T-001-big-feature.md").write_text(
-            make_task("T-001", "Build cohesive 650-line engine", approval="A0", touch_set=["src/core/domain/**", "tests/**"]),
+            make_task("T-001", "Build cohesive 650-line engine", approval="A0", touch_set=["src/core/domain/engine.py", "tests/**"]),
             encoding="utf-8",
         )
         run(["scripts/verify/tasks-index"], work, check=True)
@@ -371,25 +377,35 @@ def suite_4_unbounded_ticket_and_gate():
         (work / "src/core/domain/engine.py").write_text("\n".join(lines), encoding="utf-8")
         head_sha = commit_all(work, "feat(T-001): implement cohesive engine")
 
-        # Smart gitleaks policy: missing gitleaks does NOT force exit 2 in --fast (covered by fake-work-scan history+entropy)
+        # Canonical smort/T-001 branch AUTO-INFERS --task T-001 even when --task is omitted!
         env_no_gl = {"SECRET_SCANNER_CMD": "nonexistent_gitleaks_binary_smort"}
         r = run(
             [
-                "scripts/verify/gate", "--fast", "--task", "T-001",
+                "scripts/verify/gate", "--fast",
                 "--red-sha", red_sha,
                 "--verify-red-cmd", "PYTHONPATH=. python3 tests/test_engine.py",
                 "--emit-pow",
             ],
             work, env=env_no_gl,
         )
-        assert r.returncode == 0, f"v7 parallel gate + --verify-red-cmd failed:\n{r.stdout}\n{r.stderr}"
+        assert r.returncode == 0, f"v8 parallel gate + auto-task + --verify-red-cmd failed:\n{r.stdout}\n{r.stderr}"
         assert not (work / "scripts/verify/__pycache__").exists(), "scripts/verify/__pycache__ should never be created!"
         assert "unlimited" in r.stdout
+        assert "[PASS] touch-set-check" in r.stdout, "Auto-inferred task should run touch-set-check"
         assert "[PASS] verify-red-cmd" in r.stdout
         assert "mechanically-proved-failing" in r.stdout
         assert "### Proof of work: T-001" in r.stdout
         last_line = r.stdout.strip().splitlines()[-1]
-        assert last_line.startswith("smort-done ok=1 exit=0"), f"Bad final line: {last_line!r}"
+        assert last_line.startswith("smort-done ok=1 exit=0") and "task=T-001" in last_line, f"Bad final line: {last_line!r}"
+
+        # Negative control: out-of-touch-set edit on smort/T-001 is CAUGHT even when --task is omitted!
+        (work / "src/core/domain/leak.py").write_text("LEAK = 1\n", encoding="utf-8")
+        commit_all(work, "feat: stray file outside touch_set")
+        r_leak = run(["scripts/verify/gate", "--fast"], work, env=env_no_gl)
+        assert r_leak.returncode == 1 and "[FAIL rc=1] touch-set-check" in r_leak.stdout
+        r_notask = run(["scripts/verify/gate", "--fast", "--no-task"], work, env=env_no_gl)
+        assert r_notask.returncode == 0 and "task=none" in r_notask.stdout.strip().splitlines()[-1]
+        run(["git", "reset", "--hard", head_sha], work, check=True)
 
         # Negative control: --verify-red-cmd fails loudly if command exits 0 at red-sha!
         r_fake_red = run(
@@ -410,7 +426,9 @@ def suite_4_unbounded_ticket_and_gate():
         r_ff = run(["scripts/verify/gate", "--fast", "--fail-fast", "--max-lines", "200"], work, env=env_no_gl)
         assert r_ff.returncode == 1 and "project-checks" not in r_ff.stdout
 
-        # Opt-in --max-lines dry-run exits 4
+        # --dry-run emits dirty_files & sensitive_touched and exits 4 over opt-in --max-lines
+        r_dry_ok = run(["scripts/verify/gate", "--dry-run"], work, env=env_no_gl)
+        assert r_dry_ok.returncode == 0 and "dirty_files=0" in r_dry_ok.stdout and "sensitive_touched=0" in r_dry_ok.stdout
         r_dry = run(["scripts/verify/gate", "--dry-run", "--max-lines", "200"], work, env=env_no_gl)
         assert r_dry.returncode == 4
 
@@ -426,42 +444,59 @@ def suite_4_unbounded_ticket_and_gate():
 
 
 # ---------------------------------------------------------------------------
-# Suite 5: touch-set-check & Hardened fake-work-scan (History + Shannon Entropy)
+# Suite 5: touch-set-check (Auto-Loaded Rules) & Hardened fake-work-scan
 # ---------------------------------------------------------------------------
 def suite_5_touch_set_and_fake_work():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         init_git_repo(work)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
+        # Configure owner DO_NOT_TOUCH and custom A1_SENSITIVE_PATHS token ('ledger') in AGENTS.md
+        ag = (work / "AGENTS.md").read_text(encoding="utf-8")
+        ag = ag.replace("{{DO_NOT_TOUCH}}", "src/legacy/**").replace(
+            "{{A1_SENSITIVE_PATHS}}", "auth,billing,ledger"
+        )
+        (work / "AGENTS.md").write_text(ag, encoding="utf-8")
+
         (work / "tasks/T-001-a0.md").write_text(make_task("T-001", approval="A0", touch_set=["src/**"]), encoding="utf-8")
-        (work / "tasks/T-002-ci.md").write_text(make_task("T-002", approval="A1", touch_set=[".github/workflows/**"]), encoding="utf-8")
+        (work / "tasks/T-002-ci.md").write_text(make_task("T-002", approval="A1", touch_set=[".github/workflows/**", "packages/web/package.json"]), encoding="utf-8")
         (work / "tests").mkdir(exist_ok=True)
         (work / "tests/sample_test.go").write_text("package t\nfunc TestKeep() {}\nfunc TestDrop() {}\n", encoding="utf-8")
         (work / "tests/SampleTest.java").write_text("class S {\n  @Test void a(){}\n  @Test void b(){}\n}\n", encoding="utf-8")
         commit_all(work, "chore: base")
 
-        # 5a: A0 touching sensitive path blocked
+        # 5a: A0 touching custom owner A1_SENSITIVE_PATHS ('ledger') AND DO_NOT_TOUCH ('src/legacy/**') blocked AUTOMATICALLY without CLI flags!
         run(["git", "checkout", "-b", "smort/T-001"], work, check=True)
-        (work / "src/auth").mkdir(parents=True)
-        (work / "src/auth/login.py").write_text("def login(): return True\n", encoding="utf-8")
-        commit_all(work, "feat: auth")
+        (work / "src/ledger").mkdir(parents=True)
+        (work / "src/ledger/pay.py").write_text("def settle(): return True\n", encoding="utf-8")
+        (work / "src/legacy").mkdir(parents=True)
+        (work / "src/legacy/old.py").write_text("OLD = 1\n", encoding="utf-8")
+        commit_all(work, "feat: ledger + legacy")
         r_sens = run(["scripts/verify/touch-set-check", "T-001"], work)
-        assert r_sens.returncode == 1 and "A0 SENSITIVE-PATH ESCALATION" in r_sens.stdout
+        assert r_sens.returncode == 1
+        assert "A0 SENSITIVE-PATH ESCALATION" in r_sens.stdout and "ledger" in r_sens.stdout
+        assert "DO_NOT_TOUCH violations" in r_sens.stdout and "src/legacy/old.py" in r_sens.stdout
 
-        # 5b: Builder tampering scripts/verify/gate ALWAYS blocked
+        # 5b: Builder tampering scripts/verify/gate OR .githooks/pre-commit ALWAYS blocked (even with A1 touch_set)!
         run(["git", "checkout", "-b", "smort/tamper", "main"], work, check=True)
-        (work / "tasks/T-099-evil.md").write_text(make_task("T-099", approval="A1", touch_set=["scripts/verify/**"]), encoding="utf-8")
+        (work / "tasks/T-099-evil.md").write_text(make_task("T-099", approval="A1", touch_set=["scripts/verify/**", ".githooks/**"]), encoding="utf-8")
         (work / "scripts/verify/gate").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        (work / ".githooks").mkdir(exist_ok=True)
+        (work / ".githooks/pre-commit").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
         commit_all(work, "chore: try tamper")
-        assert run(["scripts/verify/fake-work-scan", "--lane", "builder", "--task", "T-099"], work).returncode == 1
+        r_tmp = run(["scripts/verify/fake-work-scan", "--lane", "builder", "--task", "T-099"], work)
+        assert r_tmp.returncode == 1 and "scripts/verify/gate" in r_tmp.stdout and ".githooks/pre-commit" in r_tmp.stdout
         assert run(["scripts/verify/fake-work-scan", "--lane", "integration"], work).returncode == 0
 
-        # 5c: Authorized A1 builder editing .github/workflows/ci.yml allowed; unauthorized blocked
+        # 5c: Authorized A1 builder editing .github/workflows/ci.yml & nested monorepo packages/web/package.json allowed; unauthorized blocked!
         run(["git", "checkout", "-b", "smort/T-002", "main"], work, check=True)
         (work / ".github/workflows").mkdir(parents=True)
         (work / ".github/workflows/ci.yml").write_text("name: CI\non: [push]\njobs:\n  t:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - run: echo ok\n", encoding="utf-8")
-        commit_all(work, "ci: add workflow")
-        assert run(["scripts/verify/fake-work-scan", "--lane", "builder"], work).returncode == 1
+        (work / "packages/web").mkdir(parents=True)
+        (work / "packages/web/package.json").write_text('{"name": "web"}\n', encoding="utf-8")
+        commit_all(work, "ci: add workflow + monorepo manifest")
+        r_unauth = run(["scripts/verify/fake-work-scan", "--lane", "builder"], work)
+        assert r_unauth.returncode == 1 and ".github/workflows/ci.yml" in r_unauth.stdout and "packages/web/package.json" in r_unauth.stdout
         assert run(["scripts/verify/fake-work-scan", "--lane", "builder", "--task", "T-002"], work).returncode == 0
 
         # 5d: Python except: pass + Go/Java test deletion
@@ -488,7 +523,7 @@ def suite_5_touch_set_and_fake_work():
         r_hist = run(["scripts/verify/fake-work-scan"], work)
         assert r_hist.returncode == 1 and "history:" in r_hist.stdout and "secret literal in branch commit history" in r_hist.stdout
 
-        # 5f: Shannon-entropy high-entropy secret caught; SHA-256 hex digest & example placeholder pass clean!
+        # 5f: Shannon-entropy high-entropy secret + new v8 vendor secrets (npm, hf, Slack webhook); SHA-256 hex digest & example pass!
         run(["git", "checkout", "-b", "smort/entropy", "main"], work, check=True)
         (work / "src").mkdir(exist_ok=True)
         (work / "src/safe_vals.py").write_text(
@@ -498,14 +533,32 @@ def suite_5_touch_set_and_fake_work():
         )
         commit_all(work, "chore: safe constants")
         assert run(["scripts/verify/fake-work-scan"], work).returncode == 0
-        (work / "src/real_secret.py").write_text('API_SECRET = "k9Qm4xPz8vR2nL7wJ5tB1cF6hY3dN0sA"\n', encoding="utf-8")
+        fake_npm = "npm_" + "A1b2C3d4E5f6" * 3
+        fake_hf = "hf_" + "AbCdEfGhIjKlMnOpQrStUvWxYz01234567"
+        fake_slack = "https://hooks.slack.com/services/" + "T0123ABCD/B0123EFGH/" + "xYz1234567890AbCdEfGhIjK"
+        (work / "src/real_secret.py").write_text(
+            'API_SECRET = "k9Qm4xPz8vR2nL7wJ5tB1cF6hY3dN0sA"\n'
+            f'NPM = "{fake_npm}"\n'
+            f'HF = "{fake_hf}"\n'
+            f'HOOK = "{fake_slack}"\n',
+            encoding="utf-8",
+        )
         run(["git", "add", "src/real_secret.py"], work, check=True)
         r_ent = run(["scripts/verify/fake-work-scan", "--staged"], work)
-        assert r_ent.returncode == 1 and "high-entropy secret assignment" in r_ent.stdout
+        assert r_ent.returncode == 1
+        assert "high-entropy secret assignment" in r_ent.stdout
+        assert r_ent.stdout.count("secret literal detected") >= 3
 
-        # --redact strips secrets cleanly
-        r_red = run(["scripts/verify/fake-work-scan", "--redact"], work, input_text=f"Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghijk123456 {fake_gh}\n")
-        assert r_red.returncode == 0 and fake_gh not in r_red.stdout and "[redacted]" in r_red.stdout
+        # --redact strips all secret shapes cleanly
+        r_red = run(
+            ["scripts/verify/fake-work-scan", "--redact"],
+            work,
+            input_text=f"Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghijk123456 {fake_gh} {fake_npm} {fake_hf} {fake_slack}\n",
+        )
+        assert r_red.returncode == 0
+        for s_val in (fake_gh, fake_npm, fake_hf, fake_slack):
+            assert s_val not in r_red.stdout
+        assert "[redacted]" in r_red.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +570,7 @@ def suite_6_tasks_index_delegation():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
 
         for d in ("src/c1", "src/c2", "src/c3"):
             (work / d).mkdir(parents=True)
@@ -577,7 +630,7 @@ def suite_7_project_map_and_cold_docs():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         init_git_repo(work)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         commit_all(work, "chore: init")
 
         assert run(["scripts/verify/project-map", "--check"], work).returncode == 0
@@ -599,24 +652,50 @@ def suite_7_project_map_and_cold_docs():
 
 
 # ---------------------------------------------------------------------------
-# Suite 8: code-index Polyglot, Stat No-Op Cache, Compact JSON, tsconfig Aliases & Scoped affected
+# Suite 8: code-index Schema v4 (Multiline TS, Arrow Fns, Rust Grouped Use, Comment Stripping, Stat Cache & Scoped Affected)
 # ---------------------------------------------------------------------------
-def suite_8_code_index_v7():
+def suite_8_code_index_v8():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         init_git_repo(work)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         for d in ("src/auth", "src/api", "src/web", "src/jvm/com/app", "src/native", "src/dotnet", "infra/modules/vpc", "infra/env", "db", "scripts", "packages/web"):
             (work / d).mkdir(parents=True, exist_ok=True)
         (work / "tsconfig.json").write_text(
             '// JSONC comment\n{\n  "compilerOptions": {\n    "baseUrl": ".",\n    "paths": { "@web/*": ["src/web/*"], },\n  },\n}\n',
             encoding="utf-8",
         )
-        (work / "src/web/util.ts").write_text("export function parse(x: string) { return x; }\nexport function uniqueRender() { return 1; }\n", encoding="utf-8")
-        (work / "src/web/index.ts").write_text("export * from './util';\n", encoding="utf-8")
-        (work / "src/api/app.ts").write_text("import { parse, uniqueRender } from '@web/util';\nexport function boot() { return parse('a') + uniqueRender(); }\n", encoding="utf-8")
+        (work / "src/web/util.ts").write_text(
+            "export function parse(x: string) { return x; }\n"
+            "export function uniqueRender() { return 1; }\n"
+            "export const arrowHelper = (x: number): number => x + 1;\n",
+            encoding="utf-8",
+        )
+        (work / "src/web/ghost.ts").write_text("export function phantom() { return 0; }\n", encoding="utf-8")
+        # Multiline TS re-export + block-commented phantom import (must be ignored!)
+        (work / "src/web/index.ts").write_text(
+            "/*\nimport { phantom } from './ghost';\n*/\n"
+            "export {\n  parse,\n  uniqueRender,\n} from './util';\n",
+            encoding="utf-8",
+        )
+        # Prettier-style multiline TS import using @web/* alias!
+        (work / "src/api/app.ts").write_text(
+            "import {\n  parse,\n  uniqueRender,\n} from '@web/util';\n"
+            "export function boot() { return parse('a') + uniqueRender(); }\n",
+            encoding="utf-8",
+        )
         # Unrelated file calling generic 'parse()' without importing src/web/util.ts
         (work / "src/api/unrelated.ts").write_text("export function other() { return parse('noise'); }\n", encoding="utf-8")
+
+        # Rust grouped use crate::auth::{guard, session}; expansion!
+        (work / "src/auth/guard.rs").write_text("pub fn check_guard() -> bool { true }\n", encoding="utf-8")
+        (work / "src/auth/session.rs").write_text("pub fn open_session() -> bool { true }\n", encoding="utf-8")
+        (work / "src/api/server.rs").write_text(
+            "// use crate::auth::ignored;\n"
+            "use crate::auth::{\n    guard,\n    session,\n};\n"
+            "pub fn serve() -> bool { guard::check_guard() && session::open_session() }\n",
+            encoding="utf-8",
+        )
 
         (work / "src/auth/hub.py").write_text("def verify_jwt(tok: str) -> bool:\n    return bool(tok)\n", encoding="utf-8")
         (work / "src/api/good.py").write_text("from src.auth.hub import verify_jwt\ndef handle(t):\n    return verify_jwt(t)\n", encoding="utf-8")
@@ -632,7 +711,7 @@ def suite_8_code_index_v7():
         (work / "db/schema.sql").write_text("CREATE TABLE bookings (id INT);\nSELECT * FROM bookings;\n", encoding="utf-8")
         (work / "scripts/helper.py").write_text("def cli_helper():\n    return 42\n", encoding="utf-8")
         (work / "packages/web/package.json").write_text('{"dependencies": {"react": "19.0.0"}}\n', encoding="utf-8")
-        commit_all(work, "feat: polyglot + tsconfig fixture")
+        commit_all(work, "feat: polyglot + multiline TS + Rust grouped use fixture")
 
         r_b1 = run(["scripts/verify/code-index", "build", "--worktree", "isolated"], work)
         assert r_b1.returncode == 0, f"code-index build failed:\n{r_b1.stdout}\n{r_b1.stderr}"
@@ -649,11 +728,17 @@ def suite_8_code_index_v7():
         assert caches[0].stat().st_mtime_ns == mtime1, "No-op code-index build rewrote cache unnecessarily!"
 
         idx = json.loads(raw_cache)
-        assert idx["schema_version"] == 3
+        assert idx["schema_version"] == 4
         edge_pairs = {(e["source"], e["target"]) for e in idx["edges"]}
-        # tsconfig @web/* alias AND barrel re-export resolved!
-        assert ("src/api/app.ts", "src/web/util.ts") in edge_pairs, f"tsconfig @web/* alias unresolved: {edge_pairs}"
-        assert ("src/web/index.ts", "src/web/util.ts") in edge_pairs
+        # Multiline tsconfig @web/* import, multiline barrel re-export, Rust grouped use, & comment stripping!
+        assert ("src/api/app.ts", "src/web/util.ts") in edge_pairs, f"multiline tsconfig @web/* alias unresolved: {edge_pairs}"
+        assert ("src/web/index.ts", "src/web/util.ts") in edge_pairs, f"multiline export from unresolved: {edge_pairs}"
+        assert ("src/web/index.ts", "src/web/ghost.ts") not in edge_pairs, "block-commented import must be stripped!"
+        assert ("src/api/server.rs", "src/auth/guard.rs") in edge_pairs, f"Rust grouped use guard unresolved: {edge_pairs}"
+        assert ("src/api/server.rs", "src/auth/session.rs") in edge_pairs, f"Rust grouped use session unresolved: {edge_pairs}"
+        # Arrow-function symbol extracted with kind='function'!
+        util_syms = {s["name"]: s["kind"] for s in idx["files"]["src/web/util.ts"]["symbols"]}
+        assert util_syms.get("arrowHelper") == "function", f"Expected arrowHelper function symbol, got {util_syms}"
         assert ("src/api/good.py", "src/auth/hub.py") in edge_pairs
         assert ("src/jvm/com/app/ApiController.java", "src/jvm/com/app/TokenService.java") in edge_pairs
         assert ("src/native/calc.cpp", "src/native/math.h") in edge_pairs
@@ -683,7 +768,7 @@ def suite_8_code_index_v7():
 def suite_9_ci_guard():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         r_st = run(["scripts/verify/ci-guard", "--self-test"], work)
         assert r_st.returncode == 0 and "self-test: PASS" in r_st.stdout
         wf = work / ".github/workflows"
@@ -703,7 +788,7 @@ def suite_10_claim_check():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         init_git_repo(work)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         commit_all(work, "chore: init")
         assert "self-test: PASS" in run(["scripts/verify/claim-check", "--self-test"], work, check=True).stdout
         r_ok = run(["scripts/verify/claim-check"], work)
@@ -722,7 +807,7 @@ def suite_11_conflict_matrix():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         (work / "src/core/domain").mkdir(parents=True)
         (work / "src/unrelated").mkdir(parents=True)
         (work / "src/core/domain/my file.py").write_text("A = 1\n", encoding="utf-8")
@@ -762,7 +847,7 @@ def suite_11_conflict_matrix():
 
 
 # ---------------------------------------------------------------------------
-# Suite 12: gate-brief (M0, Risk-Sliced A1 Maps, JSON) & lessons-reflect (O(log K) Compact + Git --as-of)
+# Suite 12: gate-brief (M0, Risk-Sliced A1 Maps, JSON) & lessons-reflect (O(log K) Compact + Batched Git --as-of)
 # ---------------------------------------------------------------------------
 def suite_12_gate_brief_and_lessons():
     with tempfile.TemporaryDirectory() as td:
@@ -770,7 +855,7 @@ def suite_12_gate_brief_and_lessons():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         (work / "src").mkdir(exist_ok=True)
         (work / "src/mod.py").write_text("V = 1\n", encoding="utf-8")
         commit_all(work, "chore: base v1", env={"GIT_AUTHOR_DATE": "2026-10-01T10:00:00Z", "GIT_COMMITTER_DATE": "2026-10-01T10:00:00Z"})
@@ -822,7 +907,7 @@ def suite_12_gate_brief_and_lessons():
         r_gb2 = run(["scripts/verify/gate-brief", "--max-lines", "200"], work)
         assert r_gb2.returncode == 0 and "T-101" in r_gb2.stdout and "a1_overflow_deferred=5" in r_gb2.stdout
 
-        # lessons-reflect Git-backed --as-of + O(log K) compaction across 150 lessons
+        # lessons-reflect batched Git-backed --as-of + O(log K) compaction across 150 lessons
         run(["git", "checkout", "main"], work, check=True)
         assert run([
             "scripts/verify/lessons-reflect", "log",
@@ -866,13 +951,13 @@ def suite_12_gate_brief_and_lessons():
 
 
 # ---------------------------------------------------------------------------
-# Suite 13: smort-resume (1-Call Role Startup Packet, Topic Filter & Redaction)
+# Suite 13: smort-resume (1-Call Startup Packet, ROLE_LANES Fix, Live Health/Progress & Redaction)
 # ---------------------------------------------------------------------------
 def suite_13_smort_resume():
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
         init_git_repo(work)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         (work / "tasks/T-001-ready.md").write_text(make_task("T-001", "Ready backend task", approval="A0", lane="backend"), encoding="utf-8")
         fake_gh = "ghp_" + "Z9y8X7w6V5u4" * 3
         (work / "handoffs/dev-1.md").write_text(f"# Agent handoff\nResuming T-001 (leaked {fake_gh})\n", encoding="utf-8")
@@ -883,20 +968,27 @@ def suite_13_smort_resume():
         run(["scripts/verify/tasks-index"], work, check=True)
         commit_all(work, "chore: init resume fixture")
 
-        # JSON output
+        # JSON output with v8 health & progress telemetry
         r_j = run(["scripts/verify/smort-resume", "--lane", "backend", "--agent", "dev-1", "--topic", "auth", "--offline", "--json"], work)
         assert r_j.returncode == 0, r_j.stderr
         pkt = json.loads(r_j.stdout)
-        assert pkt["state"]["template_version"] == "2026-11-25.v11"
+        assert pkt["state"]["template_version"] == "2026-11-25.v12"
+        assert pkt["health"]["dirty_files"] == 0 and pkt["health"]["hooks"] == "off"
+        assert "features" in pkt["progress"] and pkt["progress"]["awaiting_slot_local"] == 0
         assert "T-001" in pkt["tasks_next"]
         assert fake_gh not in pkt["agent_handoff"] and "[redacted]" in pkt["agent_handoff"]
         assert "auth.guard" in pkt["lessons"] and "billing.stripe" not in pkt["lessons"]
         assert pkt["not_shown"]["lessons_filtered_by_topic"] == 1
 
-        # Compact output
+        # Regression test: --lane integration is a ROLE lane and must still surface backend task T-001!
+        r_int = run(["scripts/verify/smort-resume", "--lane", "integration", "--offline", "--json"], work)
+        assert r_int.returncode == 0 and "T-001" in json.loads(r_int.stdout)["tasks_next"]
+
+        # Compact output emits @state, @health, @progress, and @not_shown
         r_c = run(["scripts/verify/smort-resume", "--lane", "verifier", "--agent", "dev-1", "--offline", "--compact"], work)
         assert r_c.returncode == 0
-        assert "@state " in r_c.stdout and "@not_shown " in r_c.stdout and fake_gh not in r_c.stdout
+        assert "@state " in r_c.stdout and "@health " in r_c.stdout and "@progress " in r_c.stdout and "@not_shown " in r_c.stdout
+        assert fake_gh not in r_c.stdout
 
         # Bounded --max-chars preserves not_shown footer outside truncation budget
         r_m = run(["scripts/verify/smort-resume", "--lane", "solo", "--offline", "--max-chars", "500"], work)
@@ -904,7 +996,7 @@ def suite_13_smort_resume():
 
 
 # ---------------------------------------------------------------------------
-# Suite 14: slot-apply (Deterministic Batch-Reply Parser, Unverified Guard & Execution)
+# Suite 14: slot-apply (Deterministic Reply Parser, Unverified Guard, --push w/ Hooks & Idempotent Re-Run)
 # ---------------------------------------------------------------------------
 def suite_14_slot_apply():
     with tempfile.TemporaryDirectory() as td:
@@ -912,11 +1004,13 @@ def suite_14_slot_apply():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         (work / "src").mkdir(exist_ok=True)
         (work / "src/app.py").write_text("V = 0\n", encoding="utf-8")
-        commit_all(work, "chore: init main")
-        run(["git", "push", "-u", "origin", "main"], work, check=True)
+        # Activate .githooks so --push proves SMORT_ALLOW_MAIN_PUSH=1 interoperability!
+        assert run(["scripts/verify/install-hooks"], work).returncode == 0
+        commit_all(work, "chore: init main", env={"SMORT_LANE": "integration"})
+        run(["git", "push", "-u", "origin", "main"], work, check=True, env={"SMORT_ALLOW_MAIN_PUSH": "1"})
 
         # Stage M0 on smort/dev
         run(["git", "checkout", "-b", "smort/dev"], work, check=True)
@@ -962,20 +1056,31 @@ def suite_14_slot_apply():
 
         # Dry-run succeeds without mutating Git or files
         reply = "approve M0 M1; hold M2 (needs load test); D1 A; D2 defer; freeze"
-        r_dry = run(["scripts/verify/slot-apply", "--manifest", str(mpath), "--reply", reply, "--dry-run", "--json"], work)
+        r_dry = run(["scripts/verify/slot-apply", "--manifest", str(mpath), "--reply", reply, "--dry-run", "--push", "--json"], work)
         assert r_dry.returncode == 0, r_dry.stderr
         dres = json.loads(r_dry.stdout)
         assert dres["mode"] == "dry-run" and len(dres["merges"]) == 2 and not (work / "src/a0.py").exists()
 
-        # Execute merges M0 + M1 into main, writes ADR D1, toggles freeze in PROGRAM.md, saves receipt!
-        r_ex = run(["scripts/verify/slot-apply", "--manifest", str(mpath), "--reply", reply, "--execute", "--merge-mode", "git", "--json"], work)
-        assert r_ex.returncode == 0, f"slot-apply --execute failed:\n{r_ex.stdout}\n{r_ex.stderr}"
+        # Execute merges M0 + M1 into main, pushes main through active .githooks/pre-push, writes ADR D1, toggles freeze, saves receipt!
+        r_ex = run(["scripts/verify/slot-apply", "--manifest", str(mpath), "--reply", reply, "--execute", "--push", "--merge-mode", "git", "--json"], work)
+        assert r_ex.returncode == 0, f"slot-apply --execute --push failed:\n{r_ex.stdout}\n{r_ex.stderr}"
         eres = json.loads(r_ex.stdout)
         assert (work / "src/a0.py").is_file() and (work / "src/a1.py").is_file()
+        assert len(eres["pushes"]) == 1 and eres["pushes"][0]["branch"] == "main" and eres["pushes"][0]["ok"] is True
+        local_main = run(["git", "rev-parse", "main"], work, check=True).stdout.strip()
+        remote_main = run(["git", "rev-parse", "origin/main"], work, check=True).stdout.strip()
+        assert local_main == remote_main
         adrs = list((work / "docs/decisions").glob("D1-T-020-*.md"))
         assert len(adrs) == 1 and "`A`" in adrs[0].read_text(encoding="utf-8")
         assert "on since" in (work / "PROGRAM.md").read_text(encoding="utf-8")
         assert eres["receipt"] and (work / eres["receipt"]).is_file()
+
+        # Idempotent re-run: commit ADR/PROGRAM changes, then re-apply M0 M1 -> clean no-op!
+        commit_all(work, "chore(slot): record decisions & toggles")
+        r_idem = run(["scripts/verify/slot-apply", "--manifest", str(mpath), "--reply", "approve M0 M1", "--execute", "--merge-mode", "git", "--json"], work)
+        assert r_idem.returncode == 0, f"Idempotent slot-apply failed:\n{r_idem.stdout}\n{r_idem.stderr}"
+        ires = json.loads(r_idem.stdout)
+        assert all("idempotent no-op" in m["detail"] for m in ires["merges"]), f"Expected idempotent no-op: {ires}"
 
 
 # ---------------------------------------------------------------------------
@@ -987,13 +1092,18 @@ def suite_15_install_hooks():
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         commit_all(work, "chore: init")
         run(["git", "push", "-u", "origin", "main"], work, check=True)
 
         # Install hooks & verify --check
         assert run(["scripts/verify/install-hooks"], work).returncode == 0
         assert run(["scripts/verify/install-hooks", "--check"], work).returncode == 0
+        # Pre-commit hook blocks committing .githooks/* in builder lane; SMORT_LANE=integration permits bootstrap commit
+        run(["git", "add", ".githooks"], work, check=True)
+        r_hk_blk = run(["git", "commit", "-m", "chore: hooks as builder"], work)
+        assert r_hk_blk.returncode != 0 and ".githooks/" in (r_hk_blk.stdout + r_hk_blk.stderr)
+        commit_all(work, "chore: install .githooks", env={"SMORT_LANE": "integration"})
 
         # Pre-commit hook mechanically blocks committing a staged secret!
         fake_gh = "ghp_" + "Q1w2E3r4T5y6" * 3
@@ -1026,15 +1136,15 @@ def suite_15_install_hooks():
 
 
 # ---------------------------------------------------------------------------
-# Suite 16: End-to-End smort v7 Lifecycle Smoke
+# Suite 16: End-to-End smort v8 Lifecycle Smoke
 # ---------------------------------------------------------------------------
-def suite_16_e2e_v7_lifecycle():
+def suite_16_e2e_v8_lifecycle():
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         bare, work = root / "origin.git", root / "work"
         work.mkdir()
         init_git_repo(work, bare)
-        assert extract_smort(work) == 32
+        assert extract_smort(work) == 34
         (work / "scripts/verify/project-checks.sh").write_text("#!/usr/bin/env bash\nPYTHONPATH=. python3 tests/test_calc.py\n", encoding="utf-8")
         (work / "scripts/verify/project-checks.sh").chmod(0o755)
         (work / "src/core/domain").mkdir(parents=True)
@@ -1049,61 +1159,201 @@ def suite_16_e2e_v7_lifecycle():
             encoding="utf-8",
         )
         run(["scripts/verify/tasks-index"], work, check=True)
-        # 1. Install hooks during bootstrap so .githooks/ is version-controlled cleanly
+        # 1. Install hooks & verify smort-doctor --strict passes cleanly!
         assert run(["scripts/verify/install-hooks"], work).returncode == 0
-        commit_all(work, "chore: install smort v7", env={"SMORT_LANE": "integration"})
+        r_doc = run(["scripts/verify/smort-doctor", "--strict"], work)
+        assert r_doc.returncode == 0 and "HEALTHY" in r_doc.stdout, f"smort-doctor failed:\n{r_doc.stdout}\n{r_doc.stderr}"
+        commit_all(work, "chore: install smort v8", env={"SMORT_LANE": "integration"})
         # pre-push hook blocks direct push to main unless SMORT_ALLOW_MAIN_PUSH=1
         assert run(["git", "push", "-u", "origin", "main"], work).returncode != 0
         run(["git", "push", "-u", "origin", "main"], work, check=True, env={"SMORT_ALLOW_MAIN_PUSH": "1"})
         run(["git", "checkout", "-b", "smort/dev"], work, check=True)
         run(["git", "push", "-u", "origin", "smort/dev"], work, check=True)
 
-        # 2. 1-call resume packet
+        # 2. 1-call resume packet (with @health & @progress)
         r_res = run(["scripts/verify/smort-resume", "--lane", "solo", "--offline", "--compact"], work)
-        assert r_res.returncode == 0 and "T-001" in r_res.stdout
+        assert r_res.returncode == 0 and "T-001" in r_res.stdout and "@health " in r_res.stdout
 
-        # 3. Claim -> Red -> Green -> Gate with --verify-red-cmd (pre-commit hook runs on every commit!)
-        run(["git", "checkout", "-b", "smort/T-001", "origin/smort/dev"], work, check=True)
+        # 3. 1-command atomic smort-claim -> Red -> Green -> Auto-task Gate (no --task needed!) with --verify-red-cmd
+        r_clm = run(["scripts/verify/smort-claim", "--agent", "solo-1", "--compact"], work)
+        assert r_clm.returncode == 0 and "@ok id=T-001 branch=smort/T-001" in r_clm.stdout, f"smort-claim failed:\n{r_clm.stdout}\n{r_clm.stderr}"
         (work / "tests/test_calc.py").write_text("from src.core.domain.calc import add\nassert add(2, 3) == 5\n", encoding="utf-8")
         red_sha = commit_all(work, "test(T-001): red calc test")
         (work / "src/core/domain/calc.py").write_text("def add(a: int, b: int) -> int:\n    return a + b\n", encoding="utf-8")
         commit_all(work, "feat(T-001): green calc")
         r_g = run(
-            ["scripts/verify/gate", "--fast", "--task", "T-001", "--red-sha", red_sha, "--verify-red-cmd", "PYTHONPATH=. python3 tests/test_calc.py", "--emit-pow"],
+            ["scripts/verify/gate", "--fast", "--red-sha", red_sha, "--verify-red-cmd", "PYTHONPATH=. python3 tests/test_calc.py", "--emit-pow"],
             work, env={"SECRET_SCANNER_CMD": "nonexistent_gl"},
         )
-        assert r_g.returncode == 0 and r_g.stdout.strip().splitlines()[-1].startswith("smort-done ok=1 exit=0"), f"gate failed:\n{r_g.stdout}\n{r_g.stderr}"
+        assert r_g.returncode == 0 and "task=T-001" in r_g.stdout.strip().splitlines()[-1], f"gate failed:\n{r_g.stdout}\n{r_g.stderr}"
 
-        # 4. Integrate A0 onto smort/dev, generate brief + manifest, apply M0 via slot-apply --execute!
+        # 4. Integrate A0 onto smort/dev, generate brief + manifest, apply & push M0 via slot-apply --execute --push!
         run(["git", "checkout", "smort/dev"], work, check=True)
         run(["git", "merge", "--no-ff", "smort/T-001", "-m", "merge(T-001): A0 to smort/dev"], work, check=True)
         run(["git", "push", "origin", "smort/dev"], work, check=True)
         run(["git", "checkout", "smort/T-001"], work, check=True)
         manifest_file = work / "verify/logs/e2e-slot.json"
         assert run(["scripts/verify/gate-brief", "--json-out", str(manifest_file)], work).returncode == 0
-        r_sa = run(["scripts/verify/slot-apply", "--manifest", str(manifest_file), "--reply", "approve M0", "--execute", "--merge-mode", "git"], work)
-        assert r_sa.returncode == 0, f"E2E slot-apply failed:\n{r_sa.stdout}\n{r_sa.stderr}"
+        r_sa = run(["scripts/verify/slot-apply", "--manifest", str(manifest_file), "--reply", "approve M0", "--execute", "--push", "--merge-mode", "git"], work)
+        assert r_sa.returncode == 0, f"E2E slot-apply --push failed:\n{r_sa.stdout}\n{r_sa.stderr}"
         assert (work / "src/core/domain/calc.py").is_file()
-        run(["git", "push", "origin", "main"], work, check=True, env={"SMORT_ALLOW_MAIN_PUSH": "1"})
+        assert run(["git", "rev-parse", "main"], work, check=True).stdout.strip() == run(["git", "rev-parse", "origin/main"], work, check=True).stdout.strip()
+
+
+# ---------------------------------------------------------------------------
+# Suite 17: smort-claim (1-Command Atomic Claimer, CAS Race Auto-Rollback & Retry)
+# ---------------------------------------------------------------------------
+def suite_17_smort_claim():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        bare, work = root / "origin.git", root / "work"
+        work.mkdir()
+        init_git_repo(work, bare)
+        assert extract_smort(work) == 34
+
+        for d in ("src/c1", "src/c2", "src/c3"):
+            (work / d).mkdir(parents=True)
+            (work / f"{d}/mod.py").write_text("X = 1\n", encoding="utf-8")
+        pm = (work / "PROJECT-MAP.md").read_text(encoding="utf-8").replace("{{src,lib,app}}", "src")
+        pm = pm.replace("| S1.C1 | {{Domain types & rules}} | Component | L0 | data | planned | `{{src/core/domain}}`", "| S1.C1 | Core | Component | L0 | data | verified | `src/c1`")
+        pm = pm.replace("| S1.C2 | {{Storage adapter}} | Component | L1 | data | planned | `{{src/core/storage}}`", "| S1.C2 | Store | Component | L1 | data | built | `src/c2`")
+        pm = pm.replace("| S2.C1 | {{API / UI boundary}} | Component | L3 | backend | planned | `{{src/api}}`", "| S2.C1 | API | Component | L3 | backend | planned | `src/c3`")
+        (work / "PROJECT-MAP.md").write_text(pm, encoding="utf-8")
+        run(["scripts/verify/project-map"], work, check=True)
+
+        (work / "tasks/T-001-top.md").write_text(make_task("T-001", "Top P0 task", priority="P0", constituents=["S1.C1"], touch_set=["src/c1/**"]), encoding="utf-8")
+        (work / "tasks/T-002-second.md").write_text(make_task("T-002", "Second P1 task", priority="P1", constituents=["S1.C1"], touch_set=["src/c2/**"]), encoding="utf-8")
+        (work / "tasks/T-003-offline.md").write_text(make_task("T-003", "Third P2 task", priority="P2", constituents=["S1.C1"], touch_set=["src/c3/**"]), encoding="utf-8")
+        run(["scripts/verify/tasks-index"], work, check=True)
+        commit_all(work, "chore: seed claim tasks")
+        run(["git", "push", "-u", "origin", "main"], work, check=True)
+        run(["git", "checkout", "-b", "smort/dev"], work, check=True)
+        run(["git", "push", "-u", "origin", "smort/dev"], work, check=True)
+
+        # 17a: --dry-run plans T-001 without creating branch or editing files
+        r_dry = run(["scripts/verify/smort-claim", "--agent", "dev-1", "--dry-run", "--json"], work)
+        assert r_dry.returncode == 0, r_dry.stderr
+        dplan = json.loads(r_dry.stdout)
+        assert dplan["mode"] == "dry-run" and dplan["task_id"] == "T-001" and dplan["base"] == "origin/smort/dev"
+        assert run(["git", "rev-parse", "--abbrev-ref", "HEAD"], work, check=True).stdout.strip() == "smort/dev"
+
+        # 17b: Dirty working tree refused with exit 1
+        (work / "dirty.tmp").write_text("wip\n", encoding="utf-8")
+        assert run(["scripts/verify/smort-claim", "--agent", "dev-1"], work).returncode == 1
+        (work / "dirty.tmp").unlink()
+
+        # 17c: Simulated millisecond CAS push collision on smort/T-001 -> auto-rolls back T-001 & retries T-002!
+        hook = bare / "hooks/pre-receive"
+        hook.write_text(
+            "#!/usr/bin/env bash\n"
+            "while read -r old new ref; do\n"
+            "  if [[ \"$ref\" == \"refs/heads/smort/T-001\" ]]; then\n"
+            "    echo 'simulated CAS collision on T-001' >&2\n"
+            "    exit 1\n"
+            "  fi\n"
+            "done\n",
+            encoding="utf-8",
+        )
+        hook.chmod(0o755)
+
+        r_race = run(["scripts/verify/smort-claim", "--agent", "dev-1", "--json"], work)
+        assert r_race.returncode == 0, f"smort-claim retry failed:\n{r_race.stdout}\n{r_race.stderr}"
+        cres = json.loads(r_race.stdout)
+        assert cres["task_id"] == "T-002" and cres["branch"] == "smort/T-002" and cres["remote_verified"] is True
+        assert cres["prior_attempts"] == [{"task_id": "T-001", "result": "cas_push_lost"}]
+        # Confirm local smort/T-001 was rolled back & deleted, while T-002 YAML & remote ref are live!
+        assert run(["git", "rev-parse", "--verify", "--quiet", "smort/T-001"], work).returncode != 0
+        assert run(["git", "rev-parse", "--verify", "--quiet", "origin/smort/T-002"], work).returncode == 0
+        t2_txt = (work / "tasks/T-002-second.md").read_text(encoding="utf-8")
+        assert "status: claimed" in t2_txt and "claim: dev-1" in t2_txt and "claimed_at:" in t2_txt
+
+        # 17d: Explicit T-001 while hook still blocks fails cleanly with exit 1 & rolls back
+        assert run(["scripts/verify/smort-claim", "T-001", "--agent", "dev-1"], work).returncode == 1
+        assert run(["git", "rev-parse", "--verify", "--quiet", "smort/T-001"], work).returncode != 0
+
+        # 17e: Remove hook -> explicit T-001 succeeds; --offline succeeds on T-003; empty queue exits 4!
+        hook.unlink()
+        r_t1 = run(["scripts/verify/smort-claim", "T-001", "--agent", "dev-2", "--compact"], work)
+        assert r_t1.returncode == 0 and "@ok id=T-001 branch=smort/T-001" in r_t1.stdout
+        r_t3 = run(["scripts/verify/smort-claim", "--agent", "dev-3", "--offline", "--json"], work)
+        assert r_t3.returncode == 0
+        c3 = json.loads(r_t3.stdout)
+        assert c3["task_id"] == "T-003" and c3["remote_verified"] is False
+        # Push T-003 so all 3 tasks are active on origin -> queue exhausted exits 4!
+        run(["git", "push", "-u", "origin", "smort/T-003"], work, check=True)
+        r_empty = run(["scripts/verify/smort-claim", "--compact"], work)
+        assert r_empty.returncode == 4 and "@no why=no-ready-candidates" in r_empty.stdout
+
+
+# ---------------------------------------------------------------------------
+# Suite 18: smort-doctor (1-Command Health & Environment Diagnostic)
+# ---------------------------------------------------------------------------
+def suite_18_smort_doctor():
+    with tempfile.TemporaryDirectory() as td:
+        work = Path(td)
+        init_git_repo(work)
+        assert extract_smort(work) == 34
+        (work / ".gitignore").unlink()  # trigger missing .gitignore warning alongside Day-1 project-checks.sh stub
+        commit_all(work, "chore: day-1 install")
+
+        # 18a: Day-1 stub & missing .gitignore -> exit 0 normal, exit 2 under --strict!
+        r_d1 = run(["scripts/verify/smort-doctor", "--json"], work)
+        assert r_d1.returncode == 0, r_d1.stdout
+        d1 = json.loads(r_d1.stdout)
+        assert d1["errors"] == 0 and d1["warnings"] >= 2
+        r_strict_warn = run(["scripts/verify/smort-doctor", "--strict"], work)
+        assert r_strict_warn.returncode == 2
+
+        # 18b: Wire project-checks.sh, restore .gitignore, install hooks, build code-index -> 0 errors, 0 warnings!
+        (work / ".gitignore").write_text("verify/logs/\nverify/code-index*.json\n.env\n", encoding="utf-8")
+        (work / "scripts/verify/project-checks.sh").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        (work / "scripts/verify/project-checks.sh").chmod(0o755)
+        (work / "src").mkdir(exist_ok=True)
+        (work / "src/app.py").write_text("X = 1\n", encoding="utf-8")
+        commit_all(work, "chore: wire repo")
+        assert run(["scripts/verify/install-hooks"], work).returncode == 0
+        assert run(["scripts/verify/code-index", "build"], work).returncode == 0
+        r_ok = run(["scripts/verify/smort-doctor", "--strict", "--json"], work)
+        assert r_ok.returncode == 0, f"Expected healthy doctor:\n{r_ok.stdout}"
+        dok = json.loads(r_ok.stdout)
+        assert dok["ok"] is True and dok["errors"] == 0 and dok["warnings"] == 0
+        by_name = {c["check"]: c for c in dok["checks"]}
+        assert "19/19 present & executable" in by_name["scripts"]["detail"]
+        assert by_name["githooks"]["status"] == "ok"
+        assert by_name["code_index"]["status"] == "ok" and "schema=v4" in by_name["code_index"]["detail"]
+
+        # 18c: Leftover *.smort-new upgrade file -> exit 1 error in --compact!
+        (work / "AGENTS.md.smort-new").write_text("upgrade artifact\n", encoding="utf-8")
+        r_err = run(["scripts/verify/smort-doctor", "--compact"], work)
+        assert r_err.returncode == 1 and "@error check=upgrade_leftovers" in r_err.stdout
+        (work / "AGENTS.md.smort-new").unlink()
+
+        # 18d: Template version mismatch between AGENTS.md and HANDOFF.md -> exit 2 under --strict!
+        ho = (work / "HANDOFF.md").read_text(encoding="utf-8")
+        (work / "HANDOFF.md").write_text(ho.replace("2026-11-25.v12", "2026-11-25.v11"), encoding="utf-8")
+        r_mis = run(["scripts/verify/smort-doctor", "--strict", "--compact"], work)
+        assert r_mis.returncode == 2 and "@warn check=template_version" in r_mis.stdout
 
 
 SUITES = [
-    ("1. Extraction (32 blocks), syntax, zero-dep, STOP-READING & cross-refs", suite_1_extraction_and_static_checks),
+    ("1. Extraction (34 blocks), syntax, zero-dep, Turn-1 STOP-READING & cross-refs", suite_1_extraction_and_static_checks),
     ("2. Hot/Cold budgets (PROGRAM.md <= 5 KB), sharded handoffs & ratchets", suite_2_hot_set_and_ratchets),
     ("3. Base-ref auto-resolution across Git topologies", suite_3_base_ref_resolution),
-    ("4. Unbounded cohesive tickets, parallel gate, smart gitleaks & --verify-red-cmd", suite_4_unbounded_ticket_and_gate),
-    ("5. touch-set-check & hardened fake-work-scan (history + Shannon entropy)", suite_5_touch_set_and_fake_work),
+    ("4. Unbounded cohesive tickets, parallel gate, auto-task inference & --verify-red-cmd", suite_4_unbounded_ticket_and_gate),
+    ("5. touch-set-check (auto-loaded rules) & hardened fake-work-scan (history, entropy, vendor, .githooks, monorepo)", suite_5_touch_set_and_fake_work),
     ("6. tasks-index full §5 delegation & batched git cat-file overlay", suite_6_tasks_index_delegation),
     ("7. project-map & live --section docs/PLAYBOOK.md & docs/OPERATIONS.md", suite_7_project_map_and_cold_docs),
-    ("8. code-index polyglot, stat no-op cache, tsconfig aliases & scoped affected", suite_8_code_index_v7),
+    ("8. code-index schema v4 (multiline TS, arrows, Rust grouped use, stat cache & scoped affected)", suite_8_code_index_v8),
     ("9. ci-guard 2/4-space YAML, block scalars & expr timeouts", suite_9_ci_guard),
     ("10. claim-check & starter verify/claims.json", suite_10_claim_check),
     ("11. conflict-matrix parallel merge-tree & disjoint-path pre-filter", suite_11_conflict_matrix),
-    ("12. gate-brief (M0, Risk-Sliced Maps, JSON) & lessons-reflect (O(log K) + --as-of)", suite_12_gate_brief_and_lessons),
-    ("13. smort-resume 1-call startup packet, topic filter & redaction", suite_13_smort_resume),
-    ("14. slot-apply deterministic batch reply, unverified guard & execution", suite_14_slot_apply),
+    ("12. gate-brief (M0, Risk-Sliced Maps, JSON) & lessons-reflect (O(log K) + batched --as-of)", suite_12_gate_brief_and_lessons),
+    ("13. smort-resume 1-call startup packet, ROLE_LANES fix, health/progress & redaction", suite_13_smort_resume),
+    ("14. slot-apply deterministic reply, unverified guard, --push w/ hooks & idempotent re-run", suite_14_slot_apply),
     ("15. install-hooks mechanical pre-commit secret & pre-push main guards", suite_15_install_hooks),
-    ("16. End-to-end smort v7 lifecycle smoke", suite_16_e2e_v7_lifecycle),
+    ("16. End-to-end smort v8 lifecycle smoke", suite_16_e2e_v8_lifecycle),
+    ("17. smort-claim 1-command atomic claimer, CAS race rollback & retry", suite_17_smort_claim),
+    ("18. smort-doctor 1-command health & environment diagnostic", suite_18_smort_doctor),
 ]
 
 

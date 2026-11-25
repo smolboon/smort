@@ -18,11 +18,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - name: Run 16-suite smort v7 verification harness
+      - name: Run 18-suite smort v8 verification harness
         run: python3 tests/verify_smort.py
       - name: Dogfood extracted ci-guard and claim-check against this repo
         run: |
@@ -44,7 +44,7 @@ jobs:
                   if m.group(1).startswith("scripts/verify/"):
                       out.chmod(out.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
                   cnt += 1
-              assert cnt == 32, f"Expected 32 blocks, got {cnt}"
+              assert cnt == 34, f"Expected 34 blocks, got {cnt}"
               subprocess.run(
                   [sys.executable, str(tdp / "scripts/verify/ci-guard"), "--dir", ".github/workflows", "--require-workflows"],
                   check=True,
