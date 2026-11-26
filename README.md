@@ -1,10 +1,23 @@
 # smort
 
+[![smort CI](https://github.com/smolboon/smort/actions/workflows/ci.yml/badge.svg)](https://github.com/smolboon/smort/actions/workflows/ci.yml)
+
 > **Single-file, zero-dependency operating system for autonomous, gated multi-agent software engineering — built to give developers their lives back.**
 
 `smort v8` · Repo template version `2026-11-25.v12` · **34 self-extracted artifacts** (12 templates, 19 scripts/lib, 3 starter configs) · **0 third-party runtime dependencies** (Python 3 stdlib + POSIX Bash + `git`) · **No per-ticket 400-line cap** · Verified by 18-suite CI (`ubuntu-latest` + `macos-latest`) · LLM-agnostic & IDE-agnostic
 
 Instead of babysitting coding agents all day typing *"Yes, continue development"*, agents read only `§0–§6` (**`35.7 KB` / `8.3%`** — skipping **`91.7%`** of `smort.md` on Turn 1), auto-bootstrap with safe `ASSUMPTION:` defaults onto protected staging (`smort/dev`), verify repo health in **1 command** (`smort-doctor`), resume every session in **1 command** (`smort-resume` with live `@health` & `@progress`), claim tasks atomically with CAS race rollback & retry in **1 command** (`smort-claim`), index polyglot/monorepo code incrementally (schema v4: multiline TS/JS imports/exports, arrow symbols, Rust grouped `use`, comment stripping), build red→green with automatic `smort/T-nnn` task-scope enforcement, detached-worktree red proof & commit-history/vendor/entropy secret defense, grade quality across 8 engineering domains, maintain bi-temporal self-healing work memory, and **continuously advance toward project completion** — leaving `main` 100% untouched and surfacing `M0` (`smort/dev → main`) + Risk-Sliced `A1` PRs at your **scheduled daily approval timeslots** for deterministic, idempotent 1-line execution via `slot-apply --execute --push`.
+
+<details>
+<summary><strong>What's New in <code>smort v8</code> (<code>2026-11-25.v12</code>)</strong></summary>
+
+- **34.1% Smaller Turn-1 Read:** `§0–§6` trimmed to **`35,692 B` (`8.3%`, `~8.9K` est tok)** — agents skip **`91.7%`** (`396.4 KB`) of `smort.md` on Turn 1 while keeping Day-1 Hot Set at **`26,462 B`** and **`44.2%`** permanent Week-2 headroom.
+- **2 New 1-Command Tools (`34` artifacts total):** `scripts/verify/smort-claim` (atomic branch + YAML + Git CAS push + `--claim-check` + automatic race-loss rollback & retry) and `scripts/verify/smort-doctor` (read-only toolchain, scripts/configs, leftover `*.smort-new`, `.gitignore`, hooks, hot-set budgets, version parity & `code-index` diagnostic).
+- **Closed Silent Security & Scope Holes:** `gate` auto-infers `--task T-nnn` on canonical `smort/T-nnn` branches (`--no-task` opt-out); `touch-set-check` & `gate-brief` auto-load owner `DO_NOT_TOUCH` & `A1_SENSITIVE_PATHS` from `AGENTS.md`/`PROGRAM.md`; `fake-work-scan` protects `.githooks/*` immutably, guards manifests/configs at **any monorepo depth**, and adds 6 vendor secret detectors (`npm_`, `pypi-`, `hf_`, SendGrid, Twilio, Slack webhooks).
+- **`code-index` Schema v4:** Comment-stripped parsing, Prettier-style multiline TS/JS `import`/`export ... from` & arrow-function symbols, Rust grouped `use crate::foo::{a, b};` expansion, parallel extraction (`≥ 32` dirty files), and atomic JSON writes.
+- **Smoother Multi-Agent & Slot Operations:** `smort-resume` fixes `--lane integration` task filtering (`ROLE_LANES`) and emits live `@health` & `@progress`; `slot-apply` adds idempotent re-runs & `--push` (`SMORT_ALLOW_MAIN_PUSH=1` for `.githooks` interop); `tasks-index`/`gate-brief` share parallel branch inspection; `lessons-reflect --as-of` batches historical Git reads in a single pipe; CI upgraded to **18 suites** on `actions/checkout@v7` & `actions/setup-python@v7`.
+
+</details>
 
 ---
 
